@@ -43,3 +43,33 @@ describe("validateStructuredOutput", () => {
     assert.match(r.error!, /object/i);
   });
 });
+
+import { makeStructuredOutputTool, DEFAULT_STRUCT_SCHEMA } from "../src/structured-output";
+
+function textOf(r: { content: any[] }): string {
+  return r.content.map((c: any) => c?.text ?? "").join("");
+}
+
+describe("structured_output tool", () => {
+  // Default schema for the tool: { title: string, priority: string, tags?: string[] }
+  it("accepts a valid payload, echoes it in details, no isError", async () => {
+    const tool = makeStructuredOutputTool();
+    // execute(toolCallId, params, signal, onUpdate, ctx)
+    const r: any = await tool.execute("tc-1", { title: "fix bug", priority: "high", tags: ["x"] }, undefined, undefined, {} as any);
+    assert.equal(Array.isArray(r.content), true);
+    assert.match(textOf(r), /accepted/i);
+    assert.deepEqual(r.details, { title: "fix bug", priority: "high", tags: ["x"] });
+    assert.equal("isError" in r, false); // AgentToolResult has no isError
+  });
+  it("rejects invalid payload with a rejection message describing the violation", async () => {
+    const tool = makeStructuredOutputTool();
+    const r: any = await tool.execute("tc-2", { priority: "high" }, undefined, undefined, {} as any); // title missing
+    assert.match(textOf(r), /title/);
+    assert.equal("isError" in r, false);
+  });
+  it("rejects wrong type with rejection message mentioning the field", async () => {
+    const tool = makeStructuredOutputTool();
+    const r: any = await tool.execute("tc-3", { title: 42, priority: "high" }, undefined, undefined, {} as any);
+    assert.match(textOf(r), /title/);
+  });
+});

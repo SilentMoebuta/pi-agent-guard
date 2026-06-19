@@ -33,3 +33,47 @@ export function validateStructuredOutput(payload: unknown, schema: StructSchema)
   }
   return { ok: true };
 }
+
+import { defineTool } from "@earendil-works/pi-coding-agent";
+import { Type, type Static } from "typebox";
+
+export const DEFAULT_STRUCT_SCHEMA: StructSchema = {
+  type: "object",
+  required: ["title", "priority"],
+  properties: {
+    title: { type: "string" },
+    priority: { type: "string" },
+    tags: { type: "array" },
+  },
+};
+
+const StructParams = Type.Object({
+  title: Type.String(),
+  priority: Type.String(),
+  tags: Type.Optional(Type.Array(Type.String(), { description: "optional tags" })),
+});
+
+export function makeStructuredOutputTool(schema: StructSchema = DEFAULT_STRUCT_SCHEMA) {
+  return defineTool({
+    name: "structured_output",
+    label: "Structured Output",
+    description:
+      "Produce a structured (JSON-validated) result. " +
+      "Only call this tool when the user explicitly requests structured/JSON output for the current task. " +
+      "On success the validated payload is echoed back as the structured result.",
+    parameters: StructParams,
+    async execute(_toolCallId: string, params: Static<typeof StructParams>, _signal, _onUpdate, _ctx) {
+      const result = validateStructuredOutput(params as unknown as Record<string, unknown>, schema);
+      if (!result.ok) {
+        return {
+          content: [{ type: "text" as const, text: `[pi-agent-guard] structured_output rejected: ${result.error}` }],
+          details: { error: result.error },
+        };
+      }
+      return {
+        content: [{ type: "text" as const, text: `[pi-agent-guard] structured_output accepted.` }],
+        details: params,
+      };
+    },
+  });
+}
