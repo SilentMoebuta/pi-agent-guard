@@ -1,0 +1,35 @@
+export type JsonType = "string" | "number" | "boolean" | "array" | "object" | "null";
+
+export interface StructSchemaProperty { type: JsonType; }
+export interface StructSchema {
+  type: "object";
+  required: string[];
+  properties: Record<string, StructSchemaProperty>;
+}
+
+export interface ValidationResult { ok: boolean; error?: string; }
+
+function jsType(v: unknown): JsonType {
+  if (Array.isArray(v)) return "array";
+  if (v === null) return "null";
+  return typeof v as JsonType;
+}
+
+export function validateStructuredOutput(payload: unknown, schema: StructSchema): ValidationResult {
+  if (typeof payload !== "object" || payload === null || Array.isArray(payload)) {
+    return { ok: false, error: "payload must be an object" };
+  }
+  const obj = payload as Record<string, unknown>;
+  for (const key of schema.required) {
+    if (!(key in obj)) return { ok: false, error: `missing required field: ${key}` };
+  }
+  for (const [key, prop] of Object.entries(schema.properties)) {
+    if (key in obj) {
+      const t = jsType(obj[key]);
+      if (t !== prop.type) {
+        return { ok: false, error: `field ${key} expected ${prop.type}, got ${t}` };
+      }
+    }
+  }
+  return { ok: true };
+}
