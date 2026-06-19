@@ -63,10 +63,16 @@ export default function (pi: ExtensionAPI): void {
     // 2. truncation: join text content, check size
     const text = (event.content || []).map((c: any) => c?.text ?? "").join("\n");
     if (shouldTruncate(text, cfg.maxOutputLines, cfg.maxOutputBytes)) {
-      const tempDir = path.join((ctx as any).cwd ?? process.cwd(), ".pi", "guard-output");
-      const replacement = truncateToTempFile(text, tempDir, event.toolCallId);
-      appendLog(cfg.logFile, { ts: Date.now(), event: "output_truncated", toolCallId: event.toolCallId });
-      return { content: [{ type: "text", text: replacement }] };
+      try {
+        const tempDir = path.join((ctx as any).cwd ?? process.cwd(), ".pi", "guard-output");
+        const replacement = truncateToTempFile(text, tempDir, event.toolCallId);
+        appendLog(cfg.logFile, { ts: Date.now(), event: "output_truncated", toolCallId: event.toolCallId });
+        return { content: [{ type: "text", text: replacement }] };
+      } catch {
+        // truncateToTempFile already has an internal fallback; this guard ensures a
+        // throw never escapes the tool_result handler. Leave content unchanged.
+        return undefined;
+      }
     }
     return undefined;
   });

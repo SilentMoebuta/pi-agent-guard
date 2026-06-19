@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { formatLogEntry, appendLog, type LogEntry } from "../src/logging";
+import { formatLogEntry, appendLog, shardPath, type LogEntry } from "../src/logging";
 
 describe("logging", () => {
   const dirs: string[] = [];
@@ -21,11 +21,14 @@ describe("logging", () => {
     assert.equal(parsed.ts, 1700000000000);
     assert.ok(!s.includes("\n"));
   });
-  it("appendLog writes then appends", () => {
+  it("appendLog writes then appends to a per-PID shard", () => {
     const f = tmpFile();
     appendLog(f, { ts: 1, event: "a" });
     appendLog(f, { ts: 2, event: "b" });
-    const lines = fs.readFileSync(f, "utf-8").trim().split("\n");
+    // ponytail: appendLog shards by process pid to avoid cross-process interleaving
+    const sharded = shardPath(f);
+    assert.equal(sharded, `${f}.${process.pid}`);
+    const lines = fs.readFileSync(sharded, "utf-8").trim().split("\n");
     assert.equal(lines.length, 2);
     assert.equal(JSON.parse(lines[1]).event, "b");
   });

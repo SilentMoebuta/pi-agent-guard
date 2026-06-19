@@ -10,16 +10,30 @@ function globMatch(str: string, glob: string): boolean {
   return new RegExp(re).test(str);
 }
 
-function extractPaths(input: unknown): string[] {
-  if (typeof input === "string") return [input];
+// Deep-walk every string in an arbitrary input (top-level value, nested object
+// values, array elements). bash tool inputs land as {command: "cat ~/...."}; the
+// command string is one candidate, but inputs may also nest ({options:{path}}).
+function* walkStrings(input: unknown): Generator<string> {
+  if (typeof input === "string") { yield input; return; }
   if (input && typeof input === "object") {
-    const out: string[] = [];
-    for (const v of Object.values(input as Record<string, unknown>)) {
-      if (typeof v === "string") out.push(v);
+    for (const v of Array.isArray(input) ? input : Object.values(input as Record<string, unknown>)) {
+      yield* walkStrings(v);
     }
-    return out;
   }
-  return [];
+}
+
+// Collect candidate strings to test: every string reachable in the input, PLUS
+// each whitespace-delimited token of those strings (so bash commands like
+// `cat ~/.git-credentials` with no slash are still caught by their basename).
+function extractPaths(input: unknown): string[] {
+  const out: string[] = [];
+  for (const s of walkStrings(input)) {
+    out.push(s);
+    for (const tok of s.split(/\s+/)) {
+      if (tok) out.push(tok);
+    }
+  }
+  return out;
 }
 
 export function detectSensitivePath(input: unknown, patterns: string[]): string | null {

@@ -29,4 +29,12 @@ describe("truncate", () => {
     assert.ok(written, "temp file created");
     assert.equal(fs.readFileSync(path.join(dir, written!), "utf-8"), big);
   });
+  it("returns an in-memory fallback preview when the temp dir is not writable", () => {
+    // A read-only / non-creatable tempDir must not throw out of the handler.
+    const big = ("line\n").repeat(10);
+    const out = truncateToTempFile(big, "/proc/this/cannot/be/created/guard-output", "toolcall-2");
+    assert.ok(out.includes("[pi-agent-guard] output truncated"));
+    assert.ok(out.includes("temp file write failed"));
+    assert.ok(out.includes("line")); // preview retained
+  });
 });
