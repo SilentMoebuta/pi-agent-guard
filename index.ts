@@ -5,10 +5,16 @@ import { countMalformedLines, formatIntegrityAlert } from "./src/integrity";
 import { appendLog } from "./src/logging";
 import { shouldTruncate, truncateToTempFile } from "./src/truncate";
 import { detectSensitivePath, REJECTION_MESSAGE } from "./src/sensitive";
+import { makeStructuredOutputTool, shouldRegisterStructuredOutput } from "./src/structured-output";
 import { DoomLoopTracker } from "./src/doom-loop";
 
 export default function (pi: ExtensionAPI): void {
   const cfg = resolveConfig();
+
+  // Opt-in structured_output tool (default off to avoid polluting normal sessions).
+  if (shouldRegisterStructuredOutput()) {
+    pi.registerTool(makeStructuredOutputTool());
+  }
 
   pi.on("session_start", (event, ctx) => {
     const sm = (ctx as any).sessionManager;

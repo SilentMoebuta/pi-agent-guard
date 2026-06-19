@@ -73,3 +73,18 @@ describe("structured_output tool", () => {
     assert.match(textOf(r), /title/);
   });
 });
+
+import { shouldRegisterStructuredOutput } from "../src/structured-output";
+
+describe("shouldRegisterStructuredOutput (gating)", () => {
+  it("returns false when env var unset", () => {
+    assert.equal(shouldRegisterStructuredOutput({}), false);
+  });
+  it("returns false when env var is not '1'", () => {
+    assert.equal(shouldRegisterStructuredOutput({ PI_GUARD_STRUCTURED_OUTPUT: "0" }), false);
+    assert.equal(shouldRegisterStructuredOutput({ PI_GUARD_STRUCTURED_OUTPUT: "true" }), false);
+  });
+  it("returns true only when env var === '1'", () => {
+    assert.equal(shouldRegisterStructuredOutput({ PI_GUARD_STRUCTURED_OUTPUT: "1" }), true);
+  });
+});

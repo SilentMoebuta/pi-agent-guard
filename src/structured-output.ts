@@ -77,3 +77,9 @@ export function makeStructuredOutputTool(schema: StructSchema = DEFAULT_STRUCT_S
     },
   });
 }
+
+/** Returns true iff the structured_output tool should be registered for this session.
+ *  Default off (no pollution of normal sessions); opt-in via PI_GUARD_STRUCTURED_OUTPUT=1. */
+export function shouldRegisterStructuredOutput(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.PI_GUARD_STRUCTURED_OUTPUT === "1";
+}
